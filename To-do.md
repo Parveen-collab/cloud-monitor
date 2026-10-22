@@ -1,3 +1,5 @@
+docker start cloudmonitor-backend
+docker stop cloudmonitor-backend
 
 
 Now that you've initialized your **Vite + React + TypeScript** project, here is a clear step-by-step roadmap to build the **Cloud Monitor** dashboard and connect it to your FastAPI backend and observability stack.
@@ -5,7 +7,6 @@ Now that you've initialized your **Vite + React + TypeScript** project, here is 
 ---
 
 #### Key Features to Implement:
-1. **Live Health Polling**: Use `useEffect` with `setInterval` (e.g., every 3–5 seconds) to fetch `/health` and display real-time uptime and component health badges (`api`, `metrics_exporter`, `engine`).
 2. **SRE / Chaos Injection Console**:
    - **Simulate 500 Error button**: Click to send `POST /api/v1/simulate/error`, display toast notification of 500 response, and verify metrics.
    - **Simulate Latency slider**: Choose delay (0.5s to 5.0s), hit `GET /api/v1/simulate/latency`, and measure round-trip time.
