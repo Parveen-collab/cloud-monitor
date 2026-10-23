@@ -6,8 +6,11 @@
 import type {
   HealthStatus,
   LatencyResponse,
+  ParsedPrometheusMetrics,
+  ProjectInfo,
   ServiceStatus,
 } from "src/types/monitor";
+import { parsePrometheusText } from "src/utils/metricsParser";
 
 /**
  * Base URL of the backend API.
@@ -91,4 +94,49 @@ export const toggleHealth = async (
 
   // Return the health state reported by the backend.
   return res.json();
+};
+
+/**
+ * Fetch raw Prometheus exposition text from the backend /metrics endpoint.
+ */
+export const fetchRawMetrics = async (): Promise<string> => {
+  const res = await fetch(`${API_BASE}/metrics`, {
+    headers: {
+      Accept: "text/plain, */*",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch /metrics (status ${res.status})`);
+  }
+
+  return res.text();
+};
+
+/**
+ * Fetch and parse Prometheus metrics into structured telemetry objects.
+ */
+export const fetchParsedMetrics = async (): Promise<ParsedPrometheusMetrics> => {
+  const text = await fetchRawMetrics();
+  return parsePrometheusText(text);
+};
+
+
+
+/**
+ * Fetch general project information from the backend root endpoint.
+ *
+ * Sends a GET request to / and returns project metadata,
+ * including the project name, version, and endpoint paths.
+ */
+export const fetchProjectInfo = async (): Promise<ProjectInfo> => {
+  const res = await fetch(`${API_BASE}/`);
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch project information (status ${res.status})`
+    );
+  }
+
+  return res.json() as Promise<ProjectInfo>;
 };
