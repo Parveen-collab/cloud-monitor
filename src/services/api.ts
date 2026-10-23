@@ -33,17 +33,22 @@ export const fetchHealth = async (): Promise<HealthStatus> => {
   return res.json();
 };
 
+
 /**
- * Fetch the current status of the monitored services.
- *
- * Sends a GET request to /api/v1/status and returns service status data.
+ * Fetch the current service status summary.
  */
 export const fetchStatus = async (): Promise<ServiceStatus> => {
   const res = await fetch(`${API_BASE}/api/v1/status`);
 
-  // Parse and return the service status information.
-  return res.json();
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch service status (status ${res.status})`
+    );
+  }
+
+  return res.json() as Promise<ServiceStatus>;
 };
+
 
 /**
  * Simulate an HTTP 500 error using the backend fault-injection endpoint.
@@ -51,11 +56,36 @@ export const fetchStatus = async (): Promise<ServiceStatus> => {
  * Sends a POST request to trigger the simulated error.
  * This function does not return response data.
  */
-export const simulateError = async (): Promise<void> => {
-  await fetch(`${API_BASE}/api/v1/simulate/error`, {
+
+/**
+ * Trigger the backend's simulated HTTP 500 error.
+ *
+ * HTTP 500 is expected for this test endpoint, so the response
+ * is parsed and returned instead of treating it as a fetch failure.
+ */
+export const simulateError = async (): Promise<{
+  status: number;
+  detail: string;
+}> => {
+  const res = await fetch(`${API_BASE}/api/v1/simulate/error`, {
     method: "POST",
   });
+
+  const data = (await res.json()) as { detail?: string };
+
+  if (res.status !== 500) {
+    throw new Error(
+      data.detail ??
+      `Expected simulated HTTP 500, but received ${res.status}`
+    );
+  }
+
+  return {
+    status: res.status,
+    detail: data.detail ?? "Simulated server error triggered.",
+  };
 };
+
 
 /**
  * Simulate network or application latency.
