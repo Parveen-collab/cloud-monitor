@@ -67,7 +67,9 @@ export interface ParsedPrometheusMetrics {
   timestamp: Date;
 }
 
-// Defines the information returned by the root API endpoint.
+/**
+ * Information returned by the backend root endpoint (/).
+ */
 export interface ProjectInfo {
   project: string;
   description: string;
