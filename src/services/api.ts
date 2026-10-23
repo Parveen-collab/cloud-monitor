@@ -87,34 +87,42 @@ export const simulateError = async (): Promise<{
 };
 
 
+
 /**
- * Simulate network or application latency.
+ * Simulate API latency for SLO and alert testing.
  *
- * @param delay - The delay value to send to the backend.
- * Sends a GET request with the delay as a query parameter.
- * Returns the response in the format defined by LatencyResponse.
+ * @param delay - Requested delay in seconds (0–10).
  */
 export const simulateLatency = async (
   delay: number
 ): Promise<LatencyResponse> => {
+  if (!Number.isFinite(delay) || delay < 0 || delay > 10) {
+    throw new Error("Delay must be between 0 and 10 seconds.");
+  }
+
   const res = await fetch(
-    `${API_BASE}/api/v1/simulate/latency?delay=${delay}`
+    `${API_BASE}/api/v1/simulate/latency?delay=${encodeURIComponent(delay)}`
   );
 
-  // Parse the response containing latency simulation details.
-  return res.json();
+  if (!res.ok) {
+    throw new Error(
+      `Failed to simulate latency (status ${res.status})`
+    );
+  }
+
+  return res.json() as Promise<LatencyResponse>;
 };
 
+
+
 /**
- * Change the simulated health status of the application.
+ * Update the application's simulated health status.
  *
- * @param status - true to mark the application healthy,
- *                 false to mark it unhealthy.
- * Sends a POST request and returns the updated health state.
+ * @param status - true for healthy, false for unhealthy.
  */
 export const toggleHealth = async (
   status: boolean
-): Promise<{ is_healthy: boolean }> => {
+): Promise<{ status: string; is_healthy: boolean }> => {
   const res = await fetch(
     `${API_BASE}/api/v1/simulate/health-toggle?status=${status}`,
     {
@@ -122,9 +130,15 @@ export const toggleHealth = async (
     }
   );
 
-  // Return the health state reported by the backend.
+  if (!res.ok) {
+    throw new Error(
+      `Failed to update health status (HTTP ${res.status})`
+    );
+  }
+
   return res.json();
 };
+
 
 /**
  * Fetch raw Prometheus exposition text from the backend /metrics endpoint.

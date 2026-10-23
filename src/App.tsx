@@ -7,6 +7,8 @@ import { MetricsViewer } from 'src/components/MetricsViewer';
 import 'src/App.css';
 import { ServiceStatusCard } from './components/ServiceStatusCard';
 import { ErrorSimulationCard } from './components/ErrorSimulationCard';
+import { LatencySimulationCard } from './components/LatencySimulationCard';
+import { HealthToggleCard } from './components/HealthToggleCard';
 
 export default function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
@@ -170,6 +172,9 @@ export default function App() {
 
         <ErrorSimulationCard />
 
+        <LatencySimulationCard />
+
+        <HealthToggleCard />
 
         <MetricsViewer />
       </main>

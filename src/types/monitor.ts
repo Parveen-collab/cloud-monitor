@@ -21,10 +21,14 @@ export interface ServiceStatus {
   };
 }
 
+/**
+ * Response returned by the latency simulation endpoint.
+ */
 export interface LatencyResponse {
   message: string;
   delayed_by: number;
 }
+
 
 export interface HttpRequestMetric {
   endpoint: string;
