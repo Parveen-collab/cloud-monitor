@@ -5,6 +5,8 @@ import { fetchHealth, fetchProjectInfo } from 'src/services/api';
 import { HealthCard } from 'src/components/HealthCard';
 import { MetricsViewer } from 'src/components/MetricsViewer';
 import 'src/App.css';
+import { ServiceStatusCard } from './components/ServiceStatusCard';
+import { ErrorSimulationCard } from './components/ErrorSimulationCard';
 
 export default function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
@@ -157,12 +159,17 @@ export default function App() {
           </section>
         )}
 
+        <ServiceStatusCard />
+
         <HealthCard
           health={health}
           loading={loading}
           error={error}
           lastUpdated={lastUpdated}
         />
+
+        <ErrorSimulationCard />
+
 
         <MetricsViewer />
       </main>

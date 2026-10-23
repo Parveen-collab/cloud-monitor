@@ -78,3 +78,17 @@ export interface ProjectInfo {
   metrics_url: string;
   health_url: string;
 }
+
+
+/**
+ * Response returned by GET /api/v1/status.
+ */
+export interface ServiceStatus {
+  service: string;
+  status: string;
+  timestamp: number;
+  monitoring: {
+    metrics_enabled: boolean;
+    target: string;
+  };
+}
