@@ -1,122 +1,172 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+import { useState, useEffect } from 'react';
+import type { HealthStatus, ProjectInfo } from 'src/types/monitor';
+import { fetchHealth, fetchProjectInfo } from 'src/services/api';
+import { HealthCard } from 'src/components/HealthCard';
+import { MetricsViewer } from 'src/components/MetricsViewer';
+import 'src/App.css';
+
+export default function App() {
+  const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [project, setProject] = useState<ProjectInfo | null>(null);
+
+  const [loading, setLoading] = useState<boolean>(true);
+  const [projectLoading, setProjectLoading] = useState<boolean>(true);
+
+  const [error, setError] = useState<string | null>(null);
+  const [projectError, setProjectError] = useState<string | null>(null);
+
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Fetch project information once when the dashboard loads.
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProjectInfo = async () => {
+      try {
+        const data = await fetchProjectInfo();
+
+        if (isMounted) {
+          setProject(data);
+          setProjectError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setProjectError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to fetch project information'
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setProjectLoading(false);
+        }
+      }
+    };
+
+    void loadProjectInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch health immediately and poll every 3 seconds.
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadHealth = async () => {
+      try {
+        const data = await fetchHealth();
+
+        if (isMounted) {
+          setHealth(data);
+          setError(null);
+          setLastUpdated(new Date());
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to reach /health endpoint'
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadHealth();
+
+    const intervalId = setInterval(() => {
+      void loadHealth();
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const apiBase =
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <div className="app-shell">
+      <header className="app-header">
+        <h1
+          style={{
+            color: '#eceff4',
+            fontSize: '2rem',
+            marginBottom: '8px',
+          }}
         >
-          Count is {count}
-        </button>
-      </section>
+          {project?.project ?? 'Cloud Monitor Dashboard'}
+        </h1>
 
-      <div className="ticks"></div>
+        <p style={{ color: '#81a1c1', margin: 0 }}>
+          {project?.description ??
+            'Real-time telemetry, SRE controls, and infrastructure health'}
+        </p>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {project && (
+          <p style={{ color: '#a3be8c', marginTop: '10px' }}>
+            Version {project.version}
+          </p>
+        )}
+      </header>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <main className="app-main">
+        {projectLoading && (
+          <p style={{ color: '#eceff4' }}>
+            Loading project information...
+          </p>
+        )}
+
+        {projectError && (
+          <p role="alert" style={{ color: '#bf616a' }}>
+            Project information unavailable: {projectError}
+          </p>
+        )}
+
+        {project && (
+          <section className="project-endpoints">
+            <h2 style={{ marginTop: 0 }}>Backend Endpoints</h2>
+
+            <ul style={{ lineHeight: 2 }}>
+              <li>
+                <a href={`${apiBase}${project.docs_url}`} target="_blank" rel="noreferrer">
+                  API Documentation
+                </a>
+              </li>
+              <li>
+                <a href={`${apiBase}${project.metrics_url}`} target="_blank" rel="noreferrer">
+                  Prometheus Metrics
+                </a>
+              </li>
+              <li>
+                <a href={`${apiBase}${project.health_url}`} target="_blank" rel="noreferrer">
+                  Health Endpoint
+                </a>
+              </li>
+            </ul>
+          </section>
+        )}
+
+        <HealthCard
+          health={health}
+          loading={loading}
+          error={error}
+          lastUpdated={lastUpdated}
+        />
+
+        <MetricsViewer />
+      </main>
+    </div>
+  );
 }
 
-export default App
