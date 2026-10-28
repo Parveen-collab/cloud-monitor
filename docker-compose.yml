@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    image: cloudmonitor-frontend:latest
+    container_name: cloudmonitor-frontend
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
