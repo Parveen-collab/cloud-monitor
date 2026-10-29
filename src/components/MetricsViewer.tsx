@@ -1,21 +1,48 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  BarChart3,
-  RefreshCw,
-  Copy,
-  Check,
-  Cpu,
-  HardDrive,
-  Activity,
-  Layers,
-  Terminal,
-  Zap,
-  Radio,
-  Clock,
-  Search,
-  ExternalLink,
-  ShieldAlert,
-} from 'lucide-react';
+  Card,
+  CardContent,
+  Typography,
+  Chip,
+  Box,
+  Paper,
+  Button,
+  IconButton,
+  Select,
+  MenuItem,
+  FormControl,
+  Tabs,
+  Tab,
+  TextField,
+  InputAdornment,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  LinearProgress,
+  Alert,
+  AlertTitle,
+  Divider,
+} from '@mui/material';
+import BarChartRoundedIcon from '@mui/icons-material/BarChartRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
+import MemoryRoundedIcon from '@mui/icons-material/MemoryRounded';
+import StorageRoundedIcon from '@mui/icons-material/StorageRounded';
+import SpeedRoundedIcon from '@mui/icons-material/SpeedRounded';
+import FlashOnRoundedIcon from '@mui/icons-material/FlashOnRounded';
+import LayersRoundedIcon from '@mui/icons-material/LayersRounded';
+import TimerRoundedIcon from '@mui/icons-material/TimerRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded';
+import SensorsRoundedIcon from '@mui/icons-material/SensorsRounded';
+import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
+import ShowChartRoundedIcon from '@mui/icons-material/ShowChartRounded';
 import type { ParsedPrometheusMetrics } from 'src/types/monitor';
 import { fetchParsedMetrics, fetchRawMetrics } from 'src/services/api';
 
@@ -36,8 +63,51 @@ export const MetricsViewer: React.FC<MetricsViewerProps> = ({
   const [filterQuery, setFilterQuery] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
 
-  const loadData = useCallback(async (isManual = false) => {
-    if (isManual) setRefreshing(true);
+  useEffect(() => {
+    let isMounted = true;
+
+    const executeFetch = async () => {
+      try {
+        const [parsed, raw] = await Promise.all([
+          fetchParsedMetrics(),
+          fetchRawMetrics(),
+        ]);
+        if (isMounted) {
+          setMetrics(parsed);
+          setRawText(raw);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Failed to scrape /metrics');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void executeFetch();
+
+    if (refreshInterval <= 0) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const timer = setInterval(() => {
+      void executeFetch();
+    }, refreshInterval);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [refreshInterval]);
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
     try {
       const [parsed, raw] = await Promise.all([
         fetchParsedMetrics(),
@@ -49,24 +119,9 @@ export const MetricsViewer: React.FC<MetricsViewerProps> = ({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to scrape /metrics');
     } finally {
-      setLoading(false);
-      if (isManual) {
-        setTimeout(() => setRefreshing(false), 300);
-      }
+      setTimeout(() => setRefreshing(false), 300);
     }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-
-    if (refreshInterval <= 0) return;
-
-    const timer = setInterval(() => {
-      loadData();
-    }, refreshInterval);
-
-    return () => clearInterval(timer);
-  }, [loadData, refreshInterval]);
+  };
 
   const handleCopyRaw = () => {
     if (!rawText) return;
@@ -93,787 +148,596 @@ export const MetricsViewer: React.FC<MetricsViewerProps> = ({
   };
 
   return (
-    <div
-      style={{
-        background: '#1a1d24',
-        borderRadius: '12px',
-        border: '1px solid #2e3440',
-        padding: '24px',
-        color: '#eceff4',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-        textAlign: 'left',
-        maxWidth: '880px',
-        margin: '24px auto',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-      }}
+    <Card
+      elevation={0}
+      className="bg-slate-900/90 border border-slate-800/80 rounded-2xl shadow-xl backdrop-blur-sm transition-all duration-300 hover:border-slate-700/80"
     >
-      {/* Top Header */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '20px',
-          paddingBottom: '16px',
-          borderBottom: '1px solid #2e3440',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            style={{
-              padding: '10px',
-              borderRadius: '10px',
-              backgroundColor: 'rgba(136, 192, 208, 0.12)',
-              border: '1px solid rgba(136, 192, 208, 0.3)',
-              color: '#88c0d0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <BarChart3 size={22} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#eceff4' }}>
-                Prometheus Metrics Telemetry
-              </h2>
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  fontFamily: 'monospace',
-                  background: 'rgba(129, 161, 193, 0.2)',
-                  color: '#88c0d0',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(136, 192, 208, 0.4)',
+      <CardContent className="p-6 md:p-7 space-y-6">
+        {/* Header Section */}
+        <Box className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-800/80">
+          <Box className="flex items-center gap-3">
+            <Box className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+              <BarChartRoundedIcon />
+            </Box>
+            <Box>
+              <Box className="flex items-center gap-2 flex-wrap">
+                <Typography
+                  variant="h5"
+                  component="h2"
+                  className="text-xl md:text-2xl font-bold text-slate-100 tracking-tight"
+                >
+                  Prometheus Metrics Telemetry
+                </Typography>
+                <Chip
+                  label="GET /metrics"
+                  size="small"
+                  className="font-mono text-xs font-semibold bg-purple-950/50 text-purple-300 border border-purple-500/30"
+                />
+              </Box>
+              <Typography variant="body2" className="text-slate-400 text-sm mt-0.5">
+                Live runtime telemetry scraped directly in Prometheus OpenMetrics format
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Controls: Poll interval + Refresh */}
+          <Box className="flex items-center gap-2.5 flex-wrap">
+            <FormControl size="small" className="min-w-28">
+              <Select
+                value={refreshInterval}
+                onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                startAdornment={<TimerRoundedIcon sx={{ fontSize: 16 }} className="text-slate-400 mr-1.5" />}
+                className="bg-slate-800/60 text-slate-200 text-xs rounded-xl"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(148, 163, 184, 0.4)',
+                  },
                 }}
               >
-                GET /metrics
-              </span>
-            </div>
-            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#81a1c1' }}>
-              Live runtime telemetry scraped directly in Prometheus OpenMetrics format
-            </p>
-          </div>
-        </div>
+                <MenuItem value={1000} className="text-xs">Poll: 1s</MenuItem>
+                <MenuItem value={3000} className="text-xs">Poll: 3s</MenuItem>
+                <MenuItem value={5000} className="text-xs">Poll: 5s</MenuItem>
+                <MenuItem value={10000} className="text-xs">Poll: 10s</MenuItem>
+                <MenuItem value={0} className="text-xs">Poll: Manual</MenuItem>
+              </Select>
+            </FormControl>
 
-        {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Polling Interval Select */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.75rem',
-              color: '#81a1c1',
-              background: '#242933',
-              padding: '4px 10px',
-              borderRadius: '6px',
-              border: '1px solid #3b4252',
-            }}
-          >
-            <Clock size={13} />
-            <span>Poll:</span>
-            <select
-              value={refreshInterval}
-              onChange={(e) => setRefreshInterval(Number(e.target.value))}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#eceff4',
-                fontSize: '0.75rem',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleManualRefresh}
+              disabled={refreshing || loading}
+              startIcon={
+                <RefreshRoundedIcon
+                  className={refreshing ? 'animate-spin' : ''}
+                  fontSize="small"
+                />
+              }
+              className="px-3.5 py-1.5 rounded-xl border-slate-700 hover:border-slate-600 bg-slate-800/60 text-slate-200 normal-case font-medium text-xs"
             >
-              <option value={1000} style={{ background: '#242933' }}>1s</option>
-              <option value={3000} style={{ background: '#242933' }}>3s</option>
-              <option value={5000} style={{ background: '#242933' }}>5s</option>
-              <option value={10000} style={{ background: '#242933' }}>10s</option>
-              <option value={0} style={{ background: '#242933' }}>Manual</option>
-            </select>
-          </div>
+              Refresh
+            </Button>
+          </Box>
+        </Box>
 
-          {/* Refresh Button */}
-          <button
-            onClick={() => loadData(true)}
-            disabled={refreshing || loading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#2e3440',
-              border: '1px solid #434c5e',
-              color: '#d8dee9',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              fontSize: '0.78rem',
-              fontWeight: 500,
-              cursor: refreshing ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
+        {/* Tab Selection */}
+        <Box className="border-b border-slate-800">
+          <Tabs
+            value={activeTab}
+            onChange={(_, val: 'visual' | 'raw') => setActiveTab(val)}
+            textColor="primary"
+            indicatorColor="primary"
+            className="min-h-10"
+            sx={{
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                minHeight: '40px',
+                padding: '8px 16px',
+              },
             }}
-            onMouseOver={(e) => (e.currentTarget.style.background = '#3b4252')}
-            onMouseOut={(e) => (e.currentTarget.style.background = '#2e3440')}
           >
-            <RefreshCw
-              size={13}
-              style={{
-                animation: refreshing ? 'spin 1s linear infinite' : 'none',
-              }}
+            <Tab
+              value="visual"
+              icon={<ShowChartRoundedIcon fontSize="small" />}
+              iconPosition="start"
+              label="Visual Dashboard"
+              className="text-slate-400 data-[selected=true]:text-sky-400"
             />
-            <span>Refresh</span>
-          </button>
-        </div>
-      </div>
+            <Tab
+              value="raw"
+              icon={<TerminalRoundedIcon fontSize="small" />}
+              iconPosition="start"
+              label="Raw Prometheus Stream"
+              className="text-slate-400 data-[selected=true]:text-purple-400"
+            />
+          </Tabs>
+        </Box>
 
-      {/* Navigation Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '20px',
-          borderBottom: '1px solid #2e3440',
-          paddingBottom: '8px',
-        }}
-      >
-        <button
-          onClick={() => setActiveTab('visual')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: activeTab === 'visual' ? 'rgba(136, 192, 208, 0.15)' : 'transparent',
-            color: activeTab === 'visual' ? '#88c0d0' : '#81a1c1',
-            border: activeTab === 'visual' ? '1px solid #88c0d0' : '1px solid transparent',
-            padding: '8px 14px',
-            borderRadius: '6px',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          <BarChart3 size={15} />
-          Visual Dashboard
-        </button>
-
-        <button
-          onClick={() => setActiveTab('raw')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: activeTab === 'raw' ? 'rgba(136, 192, 208, 0.15)' : 'transparent',
-            color: activeTab === 'raw' ? '#88c0d0' : '#81a1c1',
-            border: activeTab === 'raw' ? '1px solid #88c0d0' : '1px solid transparent',
-            padding: '8px 14px',
-            borderRadius: '6px',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          <Terminal size={15} />
-          Raw Prometheus Stream
-        </button>
-      </div>
-
-      {/* Error Banner */}
-      {error && (
-        <div
-          style={{
-            background: '#3b1212',
-            border: '1px solid #7f1d1d',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            color: '#fca5a5',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '0.85rem',
-          }}
-        >
-          <ShieldAlert size={18} />
-          <div>
-            <strong>Error querying /metrics:</strong> {error}
-            <div style={{ fontSize: '0.75rem', marginTop: '4px', color: '#f87171' }}>
+        {/* Error Notification */}
+        {error && (
+          <Alert
+            severity="error"
+            variant="outlined"
+            icon={<ReportProblemRoundedIcon className="text-rose-400" />}
+            className="border-rose-500/30 bg-rose-950/20 text-rose-300 rounded-xl"
+          >
+            <AlertTitle className="font-semibold mb-0.5">Error querying /metrics</AlertTitle>
+            <Typography variant="body2">{error}</Typography>
+            <Typography variant="caption" className="text-rose-400/80 block mt-1">
               Ensure your backend is running on http://localhost:8000 and CORS or Vite proxy is enabled.
-            </div>
-          </div>
-        </div>
-      )}
+            </Typography>
+          </Alert>
+        )}
 
-      {/* TAB 1: Visual Telemetry Dashboard */}
-      {activeTab === 'visual' && metrics && (
-        <div>
-          {/* 4 Primary KPI Cards */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-              gap: '12px',
-              marginBottom: '20px',
-            }}
-          >
-            {/* KPI 1: Total HTTP Requests */}
-            <div
-              style={{
-                background: '#242933',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #3b4252',
-              }}
+        {/* TAB 1: Visual Telemetry Dashboard */}
+        {activeTab === 'visual' && metrics && (
+          <Box className="space-y-6">
+            {/* 4 Primary KPI Cards */}
+            <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {/* KPI 1: Total HTTP Requests */}
+              <Paper
+                elevation={0}
+                className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 flex flex-col justify-between hover:border-slate-600 transition-colors"
+              >
+                <Box className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                  <span>Total Requests</span>
+                  <ShowChartRoundedIcon fontSize="small" className="text-sky-400" />
+                </Box>
+                <Typography variant="h4" className="text-2xl md:text-3xl font-extrabold text-slate-100 my-2">
+                  {metrics.totalRequestsCount}
+                </Typography>
+                <Typography variant="caption" className="text-emerald-400 font-medium">
+                  {metrics.httpRequests.length} active endpoints tracked
+                </Typography>
+              </Paper>
+
+              {/* KPI 2: Active Requests & Errors */}
+              <Paper
+                elevation={0}
+                className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 flex flex-col justify-between hover:border-slate-600 transition-colors"
+              >
+                <Box className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                  <span>Active / In-Flight</span>
+                  <FlashOnRoundedIcon fontSize="small" className="text-amber-400" />
+                </Box>
+                <Typography variant="h4" className="text-2xl md:text-3xl font-extrabold text-slate-100 my-2">
+                  {metrics.process.activeRequests}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  className={metrics.process.simulatedErrorsTotal > 0 ? 'text-rose-400 font-semibold' : 'text-slate-400'}
+                >
+                  Simulated 500 Errors: <strong>{metrics.process.simulatedErrorsTotal}</strong>
+                </Typography>
+              </Paper>
+
+              {/* KPI 3: Resident Memory (RSS) */}
+              <Paper
+                elevation={0}
+                className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 flex flex-col justify-between hover:border-slate-600 transition-colors"
+              >
+                <Box className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                  <span>Resident Memory</span>
+                  <StorageRoundedIcon fontSize="small" className="text-purple-400" />
+                </Box>
+                <Typography variant="h4" className="text-2xl md:text-3xl font-extrabold text-slate-100 my-2 font-mono">
+                  {formatBytes(metrics.process.residentMemoryBytes)}
+                </Typography>
+                <Typography variant="caption" className="text-slate-400">
+                  Virtual: {formatBytes(metrics.process.virtualMemoryBytes)}
+                </Typography>
+              </Paper>
+
+              {/* KPI 4: CPU & Runtime */}
+              <Paper
+                elevation={0}
+                className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 flex flex-col justify-between hover:border-slate-600 transition-colors"
+              >
+                <Box className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                  <span>Process CPU Time</span>
+                  <MemoryRoundedIcon fontSize="small" className="text-emerald-400" />
+                </Box>
+                <Typography variant="h4" className="text-2xl md:text-3xl font-extrabold text-slate-100 my-2 font-mono">
+                  {metrics.process.cpuSecondsTotal.toFixed(2)}s
+                </Typography>
+                <Typography variant="caption" className="text-sky-400 font-mono">
+                  CPython v{metrics.process.pythonVersion}
+                </Typography>
+              </Paper>
+            </Box>
+
+            {/* Section: Endpoint Traffic & Status Breakdown */}
+            <Paper
+              elevation={0}
+              className="p-5 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-4"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#81a1c1', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                <span>Total Requests</span>
-                <Activity size={16} color="#88c0d0" />
-              </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 700, margin: '8px 0 4px', color: '#eceff4' }}>
-                {metrics.totalRequestsCount}
-              </div>
-              <div style={{ fontSize: '0.72rem', color: '#a3be8c' }}>
-                {metrics.httpRequests.length} active endpoints tracked
-              </div>
-            </div>
+              <Box className="flex items-center justify-between">
+                <Box className="flex items-center gap-2">
+                  <LayersRoundedIcon fontSize="small" className="text-sky-400" />
+                  <Typography variant="subtitle1" className="font-bold text-slate-100">
+                    Endpoint Request Distribution
+                  </Typography>
+                </Box>
+                <Typography variant="caption" className="font-mono text-slate-400 text-xs">
+                  cloudmonitor_http_requests_total
+                </Typography>
+              </Box>
 
-            {/* KPI 2: Active Requests & Errors */}
-            <div
-              style={{
-                background: '#242933',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #3b4252',
-              }}
+              {metrics.httpRequests.length === 0 ? (
+                <Typography variant="body2" className="text-slate-400 py-3">
+                  No HTTP request telemetry recorded yet.
+                </Typography>
+              ) : (
+                <TableContainer className="rounded-xl border border-slate-700/40 overflow-hidden">
+                  <Table size="small">
+                    <TableHead className="bg-slate-800/80">
+                      <TableRow>
+                        <TableCell className="text-slate-400 font-semibold text-xs border-slate-700/50">Method</TableCell>
+                        <TableCell className="text-slate-400 font-semibold text-xs border-slate-700/50">Endpoint</TableCell>
+                        <TableCell className="text-slate-400 font-semibold text-xs border-slate-700/50">Status</TableCell>
+                        <TableCell align="right" className="text-slate-400 font-semibold text-xs border-slate-700/50">Requests</TableCell>
+                        <TableCell align="right" className="text-slate-400 font-semibold text-xs border-slate-700/50">Share</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {metrics.httpRequests.map((req, i) => {
+                        const sharePercent =
+                          metrics.totalRequestsCount > 0
+                            ? Math.round((req.count / metrics.totalRequestsCount) * 100)
+                            : 0;
+                        const is2xx = req.statusCode.startsWith('2');
+
+                        return (
+                          <TableRow
+                            key={`${req.endpoint}-${req.method}-${req.statusCode}-${i}`}
+                            className="hover:bg-slate-800/30 transition-colors"
+                          >
+                            <TableCell className="border-slate-800/60">
+                              <Chip
+                                label={req.method}
+                                size="small"
+                                className={`font-mono text-xs font-bold rounded ${
+                                  req.method === 'GET'
+                                    ? 'bg-sky-950/50 text-sky-300 border border-sky-500/30'
+                                    : 'bg-purple-950/50 text-purple-300 border border-purple-500/30'
+                                }`}
+                              />
+                            </TableCell>
+                            <TableCell className="font-mono text-slate-200 text-xs border-slate-800/60">
+                              {req.endpoint}
+                            </TableCell>
+                            <TableCell className="border-slate-800/60">
+                              <Chip
+                                label={req.statusCode}
+                                size="small"
+                                className={`font-mono text-xs font-semibold rounded ${
+                                  is2xx
+                                    ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-500/30'
+                                    : 'bg-rose-950/50 text-rose-300 border border-rose-500/30'
+                                }`}
+                              />
+                            </TableCell>
+                            <TableCell align="right" className="font-semibold text-slate-100 border-slate-800/60">
+                              {req.count}
+                            </TableCell>
+                            <TableCell align="right" className="border-slate-800/60">
+                              <Box className="flex items-center justify-end gap-2">
+                                <Typography variant="caption" className="font-mono text-slate-400 text-xs">
+                                  {sharePercent}%
+                                </Typography>
+                                <Box className="w-16">
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={sharePercent}
+                                    className="h-1.5 rounded-full bg-slate-700"
+                                    sx={{
+                                      '& .MuiLinearProgress-bar': {
+                                        backgroundColor: '#38bdf8',
+                                        borderRadius: '999px',
+                                      },
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Paper>
+
+            {/* Section: Latency Benchmarks */}
+            <Paper
+              elevation={0}
+              className="p-5 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-4"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#81a1c1', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                <span>Active / In-Flight</span>
-                <Zap size={16} color="#ebcb8b" />
-              </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 700, margin: '8px 0 4px', color: '#eceff4' }}>
-                {metrics.process.activeRequests}
-              </div>
-              <div style={{ fontSize: '0.72rem', color: metrics.process.simulatedErrorsTotal > 0 ? '#f87171' : '#81a1c1' }}>
-                Simulated 500 Errors: <strong>{metrics.process.simulatedErrorsTotal}</strong>
-              </div>
-            </div>
+              <Box className="flex items-center justify-between">
+                <Box className="flex items-center gap-2">
+                  <SpeedRoundedIcon fontSize="small" className="text-amber-400" />
+                  <Typography variant="subtitle1" className="font-bold text-slate-100">
+                    Response Latency & Duration (Histogram Summary)
+                  </Typography>
+                </Box>
+                <Typography variant="caption" className="font-mono text-slate-400 text-xs">
+                  cloudmonitor_http_request_duration_seconds
+                </Typography>
+              </Box>
 
-            {/* KPI 3: Resident Memory (RSS) */}
-            <div
-              style={{
-                background: '#242933',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #3b4252',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#81a1c1', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                <span>Resident Memory (RSS)</span>
-                <HardDrive size={16} color="#b48ead" />
-              </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 700, margin: '8px 0 4px', color: '#eceff4' }}>
-                {formatBytes(metrics.process.residentMemoryBytes)}
-              </div>
-              <div style={{ fontSize: '0.72rem', color: '#81a1c1' }}>
-                Virtual: {formatBytes(metrics.process.virtualMemoryBytes)}
-              </div>
-            </div>
+              {metrics.latencies.length === 0 ? (
+                <Typography variant="body2" className="text-slate-400 py-3">
+                  No latency histogram data recorded yet.
+                </Typography>
+              ) : (
+                <Box className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {metrics.latencies.map((lat, i) => {
+                    const latencyColor =
+                      lat.avgMs < 50
+                        ? 'text-emerald-400'
+                        : lat.avgMs < 200
+                        ? 'text-amber-400'
+                        : 'text-rose-400';
 
-            {/* KPI 4: CPU & Python Runtime */}
-            <div
-              style={{
-                background: '#242933',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #3b4252',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#81a1c1', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                <span>Process CPU Time</span>
-                <Cpu size={16} color="#88c0d0" />
-              </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 700, margin: '8px 0 4px', color: '#eceff4' }}>
-                {metrics.process.cpuSecondsTotal.toFixed(2)}s
-              </div>
-              <div style={{ fontSize: '0.72rem', color: '#88c0d0' }}>
-                CPython v{metrics.process.pythonVersion}
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Endpoint Traffic & Status Breakdown */}
-          <div
-            style={{
-              background: '#242933',
-              borderRadius: '8px',
-              border: '1px solid #3b4252',
-              padding: '16px',
-              marginBottom: '20px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#d8dee9', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Layers size={16} color="#88c0d0" />
-                Endpoint Request Distribution
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: '#81a1c1' }}>
-                cloudmonitor_http_requests_total
-              </span>
-            </div>
-
-            {metrics.httpRequests.length === 0 ? (
-              <p style={{ fontSize: '0.8rem', color: '#81a1c1', margin: 0 }}>No HTTP request telemetry recorded yet.</p>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                  <thead>
-                    <tr style={{ color: '#81a1c1', textAlign: 'left', borderBottom: '1px solid #3b4252' }}>
-                      <th style={{ padding: '8px 10px' }}>Method</th>
-                      <th style={{ padding: '8px 10px' }}>Endpoint</th>
-                      <th style={{ padding: '8px 10px' }}>Status</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Requests</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Share</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.httpRequests.map((req, i) => {
-                      const sharePercent = metrics.totalRequestsCount > 0
-                        ? Math.round((req.count / metrics.totalRequestsCount) * 100)
-                        : 0;
-                      return (
-                        <tr
-                          key={`${req.endpoint}-${req.method}-${req.statusCode}-${i}`}
-                          style={{
-                            borderBottom: '1px solid #2e3440',
-                            backgroundColor: i % 2 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent',
-                          }}
-                        >
-                          <td style={{ padding: '8px 10px' }}>
-                            <span
-                              style={{
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                background: req.method === 'GET' ? 'rgba(136, 192, 208, 0.2)' : 'rgba(180, 142, 173, 0.2)',
-                                color: req.method === 'GET' ? '#88c0d0' : '#b48ead',
-                              }}
-                            >
-                              {req.method}
-                            </span>
-                          </td>
-                          <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#eceff4' }}>
-                            {req.endpoint}
-                          </td>
-                          <td style={{ padding: '8px 10px' }}>
-                            <span
-                              style={{
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                background: req.statusCode.startsWith('2')
-                                  ? 'rgba(163, 190, 140, 0.2)'
-                                  : 'rgba(191, 97, 106, 0.2)',
-                                color: req.statusCode.startsWith('2') ? '#a3be8c' : '#bf616a',
-                              }}
-                            >
-                              {req.statusCode}
-                            </span>
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>
-                            {req.count}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                              <span style={{ fontSize: '0.75rem', color: '#81a1c1' }}>{sharePercent}%</span>
-                              <div
-                                style={{
-                                  width: '45px',
-                                  height: '6px',
-                                  background: '#3b4252',
-                                  borderRadius: '3px',
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    width: `${sharePercent}%`,
-                                    height: '100%',
-                                    background: '#88c0d0',
-                                    borderRadius: '3px',
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Section: Latency Benchmarks */}
-          <div
-            style={{
-              background: '#242933',
-              borderRadius: '8px',
-              border: '1px solid #3b4252',
-              padding: '16px',
-              marginBottom: '20px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#d8dee9', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clock size={16} color="#ebcb8b" />
-                Response Latency & Duration (Histogram Summary)
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: '#81a1c1' }}>
-                cloudmonitor_http_request_duration_seconds
-              </span>
-            </div>
-
-            {metrics.latencies.length === 0 ? (
-              <p style={{ fontSize: '0.8rem', color: '#81a1c1', margin: 0 }}>No latency histogram data recorded yet.</p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
-                {metrics.latencies.map((lat, i) => (
-                  <div
-                    key={`${lat.endpoint}-${lat.method}-${i}`}
-                    style={{
-                      background: '#1a1d24',
-                      padding: '12px',
-                      borderRadius: '6px',
-                      border: '1px solid #3b4252',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#eceff4' }}>
-                        {lat.endpoint}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          padding: '1px 5px',
-                          borderRadius: '3px',
-                          background: '#3b4252',
-                          color: '#88c0d0',
-                        }}
+                    return (
+                      <Paper
+                        key={`${lat.endpoint}-${lat.method}-${i}`}
+                        elevation={0}
+                        className="p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 space-y-2 hover:border-slate-600 transition-colors"
                       >
-                        {lat.method}
-                      </span>
-                    </div>
+                        <Box className="flex items-center justify-between">
+                          <Typography variant="body2" className="font-mono text-xs text-slate-200 truncate">
+                            {lat.endpoint}
+                          </Typography>
+                          <Chip
+                            label={lat.method}
+                            size="small"
+                            className="font-mono text-xs font-semibold bg-slate-800 text-sky-300"
+                          />
+                        </Box>
 
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '4px 0' }}>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 700, color: lat.avgMs < 50 ? '#a3be8c' : lat.avgMs < 200 ? '#ebcb8b' : '#bf616a' }}>
-                        {lat.avgMs} ms
-                      </span>
-                      <span style={{ fontSize: '0.7rem', color: '#81a1c1' }}>avg latency</span>
-                    </div>
+                        <Box className="flex items-baseline gap-2">
+                          <Typography variant="h5" className={`font-bold font-mono ${latencyColor}`}>
+                            {lat.avgMs} ms
+                          </Typography>
+                          <Typography variant="caption" className="text-slate-400 text-xs">
+                            avg latency
+                          </Typography>
+                        </Box>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#81a1c1', marginTop: '6px', borderTop: '1px solid #2e3440', paddingTop: '6px' }}>
-                      <span>Scrapes: {lat.count}</span>
-                      <span>Total Time: {lat.sum.toFixed(3)}s</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                        <Divider className="border-slate-800" />
 
-          {/* Section: Process & Garbage Collection Internals */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '12px',
-            }}
-          >
-            {/* File Descriptors */}
-            <div
-              style={{
-                background: '#242933',
-                padding: '14px 16px',
-                borderRadius: '8px',
-                border: '1px solid #3b4252',
-              }}
-            >
-              <div style={{ fontSize: '0.78rem', color: '#81a1c1', marginBottom: '6px' }}>
-                OS File Descriptors (Open / Max)
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '1.2rem', fontWeight: 600 }}>{metrics.process.openFds}</span>
-                <span style={{ fontSize: '0.75rem', color: '#6e7786' }}>/ {metrics.process.maxFds.toLocaleString()}</span>
-              </div>
-              <div style={{ width: '100%', height: '4px', background: '#3b4252', borderRadius: '2px', marginTop: '8px' }}>
-                <div
-                  style={{
-                    width: `${Math.max(1, (metrics.process.openFds / metrics.process.maxFds) * 100)}%`,
-                    height: '100%',
-                    background: '#a3be8c',
-                    borderRadius: '2px',
+                        <Box className="flex items-center justify-between text-xs text-slate-400 pt-1 font-mono">
+                          <span>Scrapes: {lat.count}</span>
+                          <span>Total: {lat.sum.toFixed(3)}s</span>
+                        </Box>
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              )}
+            </Paper>
+
+            {/* Section: Process & GC Internals */}
+            <Box className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* File Descriptors */}
+              <Paper
+                elevation={0}
+                className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-3"
+              >
+                <Typography variant="caption" className="font-semibold text-slate-400 uppercase tracking-wider block">
+                  OS File Descriptors (Open / Max)
+                </Typography>
+                <Box className="flex items-baseline gap-2 font-mono">
+                  <Typography variant="h5" className="font-bold text-slate-100">
+                    {metrics.process.openFds}
+                  </Typography>
+                  <Typography variant="caption" className="text-slate-400">
+                    / {metrics.process.maxFds.toLocaleString()}
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.max(1, (metrics.process.openFds / metrics.process.maxFds) * 100)}
+                  className="h-2 rounded-full bg-slate-700"
+                  sx={{
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: '#34d399',
+                      borderRadius: '999px',
+                    },
                   }}
                 />
-              </div>
-            </div>
+              </Paper>
 
-            {/* Python Garbage Collection */}
-            <div
-              style={{
-                background: '#242933',
-                padding: '14px 16px',
-                borderRadius: '8px',
-                border: '1px solid #3b4252',
-              }}
-            >
-              <div style={{ fontSize: '0.78rem', color: '#81a1c1', marginBottom: '8px' }}>
-                Python GC Collections (Generations 0 / 1 / 2)
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1, background: '#1a1d24', padding: '6px 8px', borderRadius: '4px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.65rem', color: '#81a1c1' }}>Gen 0</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 600, color: '#88c0d0' }}>
-                    {metrics.process.gcCollections.gen0}
-                  </div>
-                </div>
-                <div style={{ flex: 1, background: '#1a1d24', padding: '6px 8px', borderRadius: '4px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.65rem', color: '#81a1c1' }}>Gen 1</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 600, color: '#81a1c1' }}>
-                    {metrics.process.gcCollections.gen1}
-                  </div>
-                </div>
-                <div style={{ flex: 1, background: '#1a1d24', padding: '6px 8px', borderRadius: '4px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.65rem', color: '#81a1c1' }}>Gen 2</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 600, color: '#5e81ac' }}>
-                    {metrics.process.gcCollections.gen2}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Python Garbage Collection */}
+              <Paper
+                elevation={0}
+                className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-3"
+              >
+                <Typography variant="caption" className="font-semibold text-slate-400 uppercase tracking-wider block">
+                  Python GC Collections (Generations 0 / 1 / 2)
+                </Typography>
+                <Box className="grid grid-cols-3 gap-2 text-center">
+                  <Box className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <Typography variant="caption" className="text-slate-400 text-xs">Gen 0</Typography>
+                    <Typography variant="h6" className="font-bold text-sky-400 font-mono">
+                      {metrics.process.gcCollections.gen0}
+                    </Typography>
+                  </Box>
+                  <Box className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <Typography variant="caption" className="text-slate-400 text-xs">Gen 1</Typography>
+                    <Typography variant="h6" className="font-bold text-indigo-400 font-mono">
+                      {metrics.process.gcCollections.gen1}
+                    </Typography>
+                  </Box>
+                  <Box className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <Typography variant="caption" className="text-slate-400 text-xs">Gen 2</Typography>
+                    <Typography variant="h6" className="font-bold text-purple-400 font-mono">
+                      {metrics.process.gcCollections.gen2}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            </Box>
+          </Box>
+        )}
 
-      {/* TAB 2: Raw Prometheus Text Inspector */}
-      {activeTab === 'raw' && (
-        <div>
-          {/* Search Bar & Copy Button */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              marginBottom: '12px',
-              flexWrap: 'wrap',
-            }}
-          >
-            {/* Search filter input */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#242933',
-                border: '1px solid #3b4252',
-                borderRadius: '6px',
-                padding: '6px 12px',
-                flex: '1 1 250px',
-              }}
-            >
-              <Search size={14} color="#81a1c1" />
-              <input
-                type="text"
+        {/* TAB 2: Raw Prometheus Text Inspector */}
+        {activeTab === 'raw' && (
+          <Box className="space-y-4">
+            {/* Search Bar & Quick Buttons */}
+            <Box className="flex flex-col md:flex-row md:items-center justify-between gap-3 flex-wrap">
+              <TextField
+                size="small"
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
                 placeholder="Filter metrics (e.g. cloudmonitor, memory, http)..."
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#eceff4',
-                  fontSize: '0.8rem',
-                  outline: 'none',
-                  width: '100%',
+                className="w-full md:w-80 bg-slate-800/60 rounded-xl"
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchRoundedIcon fontSize="small" className="text-slate-400" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: filterQuery ? (
+                      <InputAdornment position="end">
+                        <IconButton size="small" onClick={() => setFilterQuery('')}>
+                          <ClearRoundedIcon fontSize="small" className="text-slate-400" />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null,
+                  },
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '0.75rem',
+                    '& fieldset': { borderColor: 'rgba(148, 163, 184, 0.2)' },
+                    '&:hover fieldset': { borderColor: 'rgba(148, 163, 184, 0.4)' },
+                  },
                 }}
               />
-              {filterQuery && (
-                <button
-                  onClick={() => setFilterQuery('')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#81a1c1',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                  }}
+
+              <Box className="flex items-center gap-2 flex-wrap">
+                <Button
+                  size="small"
+                  variant={filterQuery === 'cloudmonitor' ? 'contained' : 'outlined'}
+                  onClick={() => setFilterQuery('cloudmonitor')}
+                  className="rounded-lg text-xs font-mono font-medium border-slate-700 normal-case"
                 >
-                  Clear
-                </button>
+                  App
+                </Button>
+                <Button
+                  size="small"
+                  variant={filterQuery === 'process' ? 'contained' : 'outlined'}
+                  onClick={() => setFilterQuery('process')}
+                  className="rounded-lg text-xs font-mono font-medium border-slate-700 normal-case"
+                >
+                  Process
+                </Button>
+                <Button
+                  size="small"
+                  variant={filterQuery === 'python' ? 'contained' : 'outlined'}
+                  onClick={() => setFilterQuery('python')}
+                  className="rounded-lg text-xs font-mono font-medium border-slate-700 normal-case"
+                >
+                  Python
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleCopyRaw}
+                  startIcon={copied ? <CheckRoundedIcon fontSize="small" /> : <ContentCopyRoundedIcon fontSize="small" />}
+                  className={`rounded-lg text-xs font-medium normal-case transition-all ${
+                    copied
+                      ? 'border-emerald-500 text-emerald-300 bg-emerald-950/40'
+                      : 'border-slate-700 text-slate-200 bg-slate-800/40 hover:bg-slate-800'
+                  }`}
+                >
+                  {copied ? 'Copied!' : 'Copy All'}
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="outlined"
+                  href="http://localhost:8000/metrics"
+                  target="_blank"
+                  rel="noreferrer"
+                  startIcon={<OpenInNewRoundedIcon fontSize="small" />}
+                  className="rounded-lg text-xs font-medium border-slate-700 text-sky-400 bg-slate-800/40 hover:bg-slate-800 normal-case"
+                >
+                  /metrics
+                </Button>
+              </Box>
+            </Box>
+
+            {/* Raw Text Stream Viewport */}
+            <Paper
+              elevation={0}
+              className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs leading-relaxed max-h-[480px] overflow-y-auto"
+            >
+              {filteredRawLines.length === 0 ? (
+                <Typography variant="body2" className="text-slate-400 text-center py-8">
+                  No metrics match your search query: &quot;{filterQuery}&quot;
+                </Typography>
+              ) : (
+                filteredRawLines.map((line, idx) => {
+                  const isComment = line.startsWith('#');
+                  const isHelp = line.startsWith('# HELP');
+                  const isType = line.startsWith('# TYPE');
+
+                  let textColor = 'text-slate-300';
+                  if (isHelp) textColor = 'text-slate-400 italic';
+                  else if (isType) textColor = 'text-purple-400 font-semibold';
+                  else if (isComment) textColor = 'text-slate-400';
+                  else if (line.includes('cloudmonitor_')) textColor = 'text-sky-300 font-semibold';
+                  else if (line.includes('process_')) textColor = 'text-amber-300';
+                  else if (line.includes('python_')) textColor = 'text-emerald-300';
+
+                  return (
+                    <Box key={idx} className="flex gap-3 hover:bg-slate-900/60 px-1 py-0.5 rounded">
+                      <Typography
+                        variant="caption"
+                        className="text-slate-400 select-none min-w-8 text-right font-mono"
+                      >
+                        {idx + 1}
+                      </Typography>
+                      <Typography variant="caption" className={`font-mono whitespace-pre-wrap ${textColor}`}>
+                        {line}
+                      </Typography>
+                    </Box>
+                  );
+                })
               )}
-            </div>
+            </Paper>
+          </Box>
+        )}
 
-            {/* Quick Filter Buttons & Copy */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                onClick={() => setFilterQuery('cloudmonitor')}
-                style={{
-                  background: filterQuery === 'cloudmonitor' ? '#434c5e' : '#242933',
-                  border: '1px solid #3b4252',
-                  color: '#88c0d0',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '0.72rem',
-                  cursor: 'pointer',
-                }}
-              >
-                App
-              </button>
-              <button
-                onClick={() => setFilterQuery('process')}
-                style={{
-                  background: filterQuery === 'process' ? '#434c5e' : '#242933',
-                  border: '1px solid #3b4252',
-                  color: '#81a1c1',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '0.72rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Process
-              </button>
-              <button
-                onClick={() => setFilterQuery('python')}
-                style={{
-                  background: filterQuery === 'python' ? '#434c5e' : '#242933',
-                  border: '1px solid #3b4252',
-                  color: '#b48ead',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '0.72rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Python
-              </button>
+        <Divider className="border-slate-800" />
 
-              <button
-                onClick={handleCopyRaw}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: copied ? '#2e4536' : '#2e3440',
-                  border: `1px solid ${copied ? '#a3be8c' : '#434c5e'}`,
-                  color: copied ? '#a3be8c' : '#d8dee9',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copied ? 'Copied!' : 'Copy All'}</span>
-              </button>
+        {/* Footer Info */}
+        <Box className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs text-slate-400 gap-2">
+          <Box className="flex items-center gap-1.5">
+            <SensorsRoundedIcon sx={{ fontSize: 14 }} className="text-sky-400" />
+            <Typography variant="caption" className="text-slate-400">
+              Scraping http://localhost:8000/metrics
+            </Typography>
+          </Box>
 
-              <a
-                href="http://localhost:8000/metrics"
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: '#242933',
-                  border: '1px solid #3b4252',
-                  color: '#81a1c1',
-                  padding: '5px 10px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  textDecoration: 'none',
-                }}
-              >
-                <ExternalLink size={13} />
-                Open /metrics
-              </a>
-            </div>
-          </div>
-
-          {/* Raw Text Stream Viewport */}
-          <div
-            style={{
-              background: '#0f1115',
-              border: '1px solid #2e3440',
-              borderRadius: '8px',
-              padding: '14px',
-              maxHeight: '440px',
-              overflowY: 'auto',
-              fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-              fontSize: '0.78rem',
-              lineHeight: '1.6',
-            }}
-          >
-            {filteredRawLines.length === 0 ? (
-              <div style={{ color: '#81a1c1', textAlign: 'center', padding: '20px' }}>
-                No metrics match your search query: &quot;{filterQuery}&quot;
-              </div>
-            ) : (
-              filteredRawLines.map((line, idx) => {
-                const isComment = line.startsWith('#');
-                const isHelp = line.startsWith('# HELP');
-                const isType = line.startsWith('# TYPE');
-
-                let lineStyle: React.CSSProperties = { color: '#d8dee9', whiteSpace: 'pre-wrap' };
-                if (isHelp) lineStyle = { color: '#81a1c1', fontStyle: 'italic' };
-                else if (isType) lineStyle = { color: '#b48ead' };
-                else if (isComment) lineStyle = { color: '#6e7786' };
-                else if (line.includes('cloudmonitor_')) lineStyle = { color: '#88c0d0' };
-                else if (line.includes('process_')) lineStyle = { color: '#ebcb8b' };
-                else if (line.includes('python_')) lineStyle = { color: '#a3be8c' };
-
-                return (
-                  <div key={idx} style={{ display: 'flex', gap: '12px' }}>
-                    <span style={{ color: '#4c566a', userSelect: 'none', minWidth: '32px', textAlign: 'right' }}>
-                      {idx + 1}
-                    </span>
-                    <span style={lineStyle}>{line}</span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Footer Info */}
-      <div
-        style={{
-          marginTop: '16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '0.75rem',
-          color: '#6e7786',
-          borderTop: '1px solid #242933',
-          paddingTop: '12px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Radio size={12} color="#88c0d0" />
-          <span>Scraping http://localhost:8000/metrics</span>
-        </div>
-        <span>
-          {metrics ? `Last scraped: ${metrics.timestamp.toLocaleTimeString()}` : 'Connecting...'}
-        </span>
-      </div>
-    </div>
+          <Typography variant="caption" className="text-slate-400">
+            {metrics
+              ? `Last scraped: ${metrics.timestamp.toLocaleTimeString()}`
+              : 'Connecting to Prometheus exporter...'}
+          </Typography>
+        </Box>
+      </CardContent>
+    </Card>
   );
 };

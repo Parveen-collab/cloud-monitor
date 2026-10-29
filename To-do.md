@@ -1,6 +1,14 @@
 ### To do
-- [ ] 3. Understand what each stats of the dashboard make sense
+- [ ] 3. Understand what each stats of the dashboard make sense and how they help us to monitor the health of the application. (10%) 20 minutes
+- [ ] make the ui more interactive and user friendly. (10%) 60 minutes
+- [] we can add hover effect on each state to show more information about that state
+- [] we should make the dashboard of one page only and user can click some stats to know more about them
 
+### need to understand more
+- [] we can show the trend of the stats in the dashboard
+- [] we can add a feature to set alert on some stats if it goes beyond the threshold
+- [] we can add notification on the ui for the alert
+- [] we can add a feature to rollback the deployment if it goes beyond the threshold
 
 ### Important Commands
 # Backend
