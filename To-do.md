@@ -1,8 +1,9 @@
 ### To do
-- [ ] 3. Understand what each stats of the dashboard make sense and how they help us to monitor the health of the application. (10%) 20 minutes
+- [x] 3. Understand what each stats of the dashboard make sense and how they help us to monitor the health of the application. (10%) 20 minutes
+- [x] make the ui more interactive and user friendly. (10%) 60 minutes
+- [x] we can add hover effect on each state to show more information about that state
+- [x] we should make the dashboard of one page only and user can click some stats to know more about them
 - [ ] make the ui more interactive and user friendly. (10%) 60 minutes
-- [] we can add hover effect on each state to show more information about that state
-- [] we should make the dashboard of one page only and user can click some stats to know more about them
 
 ### need to understand more
 - [] we can show the trend of the stats in the dashboard
